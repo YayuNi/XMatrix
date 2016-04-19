@@ -8,3 +8,4 @@ x64/Debug/XMatrix_CUDA.lastbuildstate
 x64/Debug/test_compile.obj
 *.idb
 *.pdb
+*.unsuccessfulbuild

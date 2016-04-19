@@ -16,7 +16,7 @@
 
 #include "common.h"
 #include "tensor.h"
-#include "tensor-operator.h"
+#include "tensor-wrapper.h"
 
 #if XMATRIX_USE_MKL == 0
 #include "tensor-cpu.h"

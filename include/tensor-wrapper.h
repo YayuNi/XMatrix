@@ -447,7 +447,7 @@ XMATRIX_INLINE Tensor_Wrapper<device, dimension, int> &operator!(Tensor_Wrapper<
 * Sign Operator
 */
 template<typename device, size_t dimension, typename DType>
-XMATRIX_INLINE Tensor_Wrapper<device, dimension, int> &operator!(Tensor_Wrapper<device, dimension, DType> &src) {
+XMATRIX_INLINE Tensor_Wrapper<device, dimension, int> &Sign(Tensor_Wrapper<device, dimension, DType> &src) {
 	Tensor_Wrapper<device, dimension, int> *t 
 		= new Tensor_Wrapper<device, dimension, int>(
 			new SignTensor<device, dimension, int, device, dimension, DType>(*(src._tensor)));
