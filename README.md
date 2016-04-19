@@ -23,10 +23,10 @@ int main(int argc, char* argv[]) {
 	// Load data for x, w and b
 	double data_x[] = {1.0, 2.0, 3.0};
 	double data_b[] = {-1.0, -2.0};
-
 	double data_w[] = {2.0, 1.0,
 	                   3.0, 2.0,
-			   1.0, 3.0};
+	                   1.0, 3.0};
+
 	x.Load(data_x, Shape1(3));
 	b.Load(data_b, Shape1(2));
 	w.Load(data_w, Shape2(3,2));
