@@ -1,0 +1,10 @@
+*.tlog
+*.log
+XMatrix_CUDA.vcxproj
+*.filters
+*.user
+x64/Debug/XMatrix_CUDA.lastbuildstate
+*.cu
+x64/Debug/test_compile.obj
+*.idb
+*.pdb
