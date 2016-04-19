@@ -135,6 +135,32 @@ struct MultipleTensor<cpu, 1, DType_dest, cpu, 1, DType_lhs, cpu, 2, DType_rhs>
 };
 
 /**
+* Multiple Operator: Scalar = Vector x Vector
+*/
+template<typename DType_dest, typename DType_lhs, typename DType_rhs>
+struct MultipleTensor<cpu, 0, DType_dest, cpu, 1, DType_lhs, cpu, 1, DType_rhs> 
+	: public BinaryDeducedTensor<cpu, 0, DType_dest, cpu, 1, DType_lhs, cpu, 1, DType_rhs> {
+
+	XMATRIX_INLINE MultipleTensor(
+		Tensor<cpu, 1, DType_lhs> &lhs, 
+		Tensor<cpu, 1, DType_rhs> &rhs)
+	: BinaryDeducedTensor<cpu, 0, DType_dest, cpu, 1, DType_lhs, cpu, 1, DType_rhs>
+		(lhs, rhs) {}
+
+	XMATRIX_INLINE void virtual Update() {
+		if (!_isUpdated) {
+			BinaryDeducedTensor::Update();
+			assert(_lhs._shape[0] == _rhs._shape[0]);
+			AllocMem(Shape0());
+
+			_ptr[0] = 0;
+			for (size_t i = 0; i < _lhs._shape[0]; i++) 
+				_ptr[0] += _lhs._ptr[i] * _rhs._ptr[i];
+		}
+	}
+};
+
+/**
 * Multiple Operator: Matrix = Matrix x Matrix
 */
 template<typename DType_dest, typename DType_lhs, typename DType_rhs>
@@ -182,6 +208,31 @@ struct MultipleTensor<cpu, dimension, DType_dest, cpu, dimension, DType_lhs, cpu
 			AllocMem(_lhs._shape);
 			for (size_t i=0; i<_lhs._shape.getSize(); i++)
 				_ptr[i] = _lhs._ptr[i] * _rhs._ptr[0];
+		}
+	}
+};
+
+/**
+* Dot Operator
+*/
+template<size_t dimension, typename DType_dest, typename DType_lhs, typename DType_rhs>
+struct DotTensor<cpu, dimension, DType_dest, cpu, dimension, DType_lhs, cpu, dimension, DType_rhs> 
+	: public BinaryDeducedTensor<cpu, dimension, DType_dest, cpu, dimension, DType_lhs, cpu, dimension, DType_rhs> {
+
+	XMATRIX_INLINE DotTensor(
+		Tensor<cpu, dimension, DType_lhs> &lhs, 
+		Tensor<cpu, dimension, DType_rhs> &rhs)
+	: BinaryDeducedTensor<cpu, dimension, DType_dest, cpu, dimension, DType_lhs, cpu, dimension, DType_rhs>
+		(lhs, rhs) { }
+
+	XMATRIX_INLINE virtual void Update() {
+		if (!_isUpdated) {
+			BinaryDeducedTensor::Update();
+			assert(_lhs._shape == _rhs._shape);
+			AllocMem(_lhs._shape);
+
+			for (size_t i = 0; i < _shape.getSize(); i++)
+				_ptr[i] = _lhs._ptr[i] *   _rhs._ptr[i];
 		}
 	}
 };
@@ -777,7 +828,33 @@ struct NotTensor<cpu, dimension, int, cpu, dimension, DType>
 			UnaryDeducedTensor::Update();
 			AllocMem(_src._shape);
 			for (size_t i = 0; i < _shape.getSize(); i++)
-					_ptr[i] = (_src._ptr[i] > 0)? 0 : 1;
+				_ptr[i] = (_src._ptr[i] > 0)? 0 : 1;
+		}
+	}
+};
+
+/**
+* Sign Operator
+*/
+template<size_t dimension, typename DType>
+struct SignTensor<cpu, dimension, int, cpu, dimension, DType>
+	: public UnaryDeducedTensor<cpu, dimension, DType, cpu, dimension, DType> {
+	
+	XMATRIX_INLINE SignTensor(Tensor<cpu, dimension, DType> &src) 
+		: UnaryDeducedTensor<cpu, dimension, DType, cpu, dimension, DType>(src) {}
+
+	XMATRIX_INLINE void virtual Update() {
+		if (!_isUpdated) {
+			UnaryDeducedTensor::Update();
+			AllocMem(_src._shape);
+			for (size_t i = 0; i < _shape.getSize(); i++) {
+				if (_src._ptr[i] > 0)
+					_ptr[i] = 1;
+				else if (_src._ptr[i] == 0)
+					_ptr[i] = 0;
+				else
+					_ptr[i] = -1;
+			}
 		}
 	}
 };

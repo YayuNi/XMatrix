@@ -182,7 +182,6 @@ struct Tensor {
 	}
 
 	XMATRIX_INLINE void FreeMem() {
-		Invalid();
 		if (_ptr != NULL) {
 			if (_isCPU)
 				free(_ptr);
@@ -247,7 +246,6 @@ struct Tensor<device, 0, DType> {
 	}
 
 	XMATRIX_INLINE void FreeMem() {
-		Invalid();
 		if (_ptr != NULL) {
 			if (_isCPU)
 				free(_ptr);
@@ -291,24 +289,6 @@ XMATRIX_INLINE ostream &operator<<(ostream &os, Tensor<device, 0, DType> &t) {
 	}
 	return os;
 }
-
-template<typename device, typename DType>
-struct Scalar {
-	typedef Tensor<device, 0, DType> type;
-	static Tensor<device, 0, DType> null;
-};
-
-template<typename device, typename DType>
-struct Vector {
-	typedef Tensor<device, 1, DType> type;
-	static Tensor<device, 1, DType> null;
-};
-
-template<typename device, typename DType>
-struct Matrix {
-	typedef Tensor<device, 2, DType> type;
-	static Tensor<device, 2, DType> null;
-};
 
 template<typename device_dest, size_t dimension_dest, typename DType_dest,
 	typename device_src, size_t dimension_src, typename DType_src>
@@ -402,6 +382,25 @@ struct MultipleTensor
 	: public BinaryDeducedTensor<device_dest, dimension_dest, DType_dest, device_lhs, dimension_lhs, DType_lhs, device_rhs, dimension_rhs, DType_rhs> {
 
 	XMATRIX_INLINE MultipleTensor(
+		Tensor<device_lhs, dimension_lhs, DType_lhs> &lhs, 
+		Tensor<device_rhs, dimension_rhs, DType_rhs> &rhs)
+	: BinaryDeducedTensor<device_dest, dimension_dest, DType_dest, device_lhs, dimension_lhs, DType_lhs, device_rhs, dimension_rhs, DType_rhs>
+		(lhs, rhs) {
+			cerr << "Not supported yet!" << endl;
+			assert(false);
+	}
+};
+
+/**
+* Dot Tensor
+*/
+template<typename device_dest, size_t dimension_dest, typename DType_dest,
+	typename device_lhs, size_t dimension_lhs, typename DType_lhs,
+	typename device_rhs, size_t dimension_rhs, typename DType_rhs>
+struct DotTensor 
+	: public BinaryDeducedTensor<device_dest, dimension_dest, DType_dest, device_lhs, dimension_lhs, DType_lhs, device_rhs, dimension_rhs, DType_rhs> {
+
+	XMATRIX_INLINE DotTensor(
 		Tensor<device_lhs, dimension_lhs, DType_lhs> &lhs, 
 		Tensor<device_rhs, dimension_rhs, DType_rhs> &rhs)
 	: BinaryDeducedTensor<device_dest, dimension_dest, DType_dest, device_lhs, dimension_lhs, DType_lhs, device_rhs, dimension_rhs, DType_rhs>
@@ -657,7 +656,7 @@ struct AndTensor
 };
 
 /**
-* AndTensor
+* OrTensor
 */
 template<typename device_dest, size_t dimension_dest, typename DType_dest,
 	typename device_lhs, size_t dimension_lhs, typename DType_lhs,
@@ -684,6 +683,21 @@ struct NotTensor
 	: public UnaryDeducedTensor<device_dest, dimension_dest, DType_dest, device_src, dimension_src, DType_src> {
 
 	XMATRIX_INLINE NotTensor(Tensor<device_src, dimension_src, DType_src> &src)
+		: UnaryDeducedTensor<device_dest, dimension_dest, DType_dest, device_src, dimension_src, DType_src>(src) {
+			cerr << "Not supported yet!" << endl;
+			assert(false);
+	}
+};
+
+/**
+* Sign Tensor: return 1, -1 or 0
+*/
+template<typename device_dest, size_t dimension_dest, typename DType_dest,
+	typename device_src, size_t dimension_src, typename DType_src>
+struct SignTensor 
+	: public UnaryDeducedTensor<device_dest, dimension_dest, DType_dest, device_src, dimension_src, DType_src> {
+
+	XMATRIX_INLINE SignTensor(Tensor<device_src, dimension_src, DType_src> &src)
 		: UnaryDeducedTensor<device_dest, dimension_dest, DType_dest, device_src, dimension_src, DType_src>(src) {
 			cerr << "Not supported yet!" << endl;
 			assert(false);

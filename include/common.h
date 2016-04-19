@@ -25,6 +25,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <fstream>
+#include <vector>
 #include <cstdio>
 #include <cassert>
 #include <cstddef>

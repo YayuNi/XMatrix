@@ -2,218 +2,67 @@
 #define XMATRIX_USE_MKL 0
 
 #include "xmatrix.h"
-#include "model.h"
-#include "random-cpu.h"
+#include <cmath>
 
 using namespace xmatrix;
 
-void testShape() {
-	cout << "****************** TEST CASE: Shape *****************" << endl;
+int main(int argc, char* argv[]) {
+	// Model Parameters
+	Matrix<cpu, double>::type delta, gamma, rho, theta, vega;
+	Vector<cpu, double>::type iv, price_prob, vol_iv, vol_RfIn;
+	Vector<cpu, int>::type sp;
 
-	Shape<0> s0 = Shape0();
-	cout << s0 << endl;
+	// Model Variables
+	Vector<cpu, double>::type qty;
 
-	Shape<1> s1 = Shape1(10);
-	cout << s1 << endl;
-	cout << s1.SubShape() << endl;
+	Vector<cpu, double>::type net_delta, net_gamma, net_rho, net_theta, net_vega;
+	net_delta = qty * delta;
+	net_gamma = qty * gamma;
+	net_rho = qty * rho;
+	net_theta = qty * theta;
+	net_vega = qty * vega;
 
-	Shape<2> s2 = Shape2(10,5);
-	cout << s2 << endl;
-	cout << s2.SubShape() << endl;
-	cout << s2.SubShape().SubShape() << endl;
-
-	cout << endl;
-}
-
-void testTensorAdd() {
-	cout << "***** TEST CASE: Tensor Addition between DTypes *****" << endl;
-
-	Vector<cpu, int>::type &a = Vector<cpu, int>::type(),  &b = Vector<cpu, int>::type();
-	Vector<cpu, float>::type &c = Vector<cpu, float>::type();
-	Vector<cpu, int>::type &d = a - b;
-	Vector<cpu, float>::type &e = a + b - c;
+	Vector<cpu, double>::type HPPriceVol, HPPriceChange, HPPriceChangeSQ;
+	HPPriceVol = op::Exp(iv * sqrt(3.0 / 365)) - 1;
+	HPPriceChange = op::Dot(sp, HPPriceVol);
+	HPPriceChangeSQ = op::Pow(HPPriceChange, 2);	
 	
-	size_t length = 3;
-	int data_a[] = {1,2,3}, data_b[] = {4,5,6};
-	float data_c[] = {4.5, 5.5, 6.5};
-	a.Input(data_a, Shape1(length));
-	b.Input(data_b, Shape1(length));
-	c.Input(data_c, Shape1(length));
-	d.Update();
-	e.Update();
-	cout << d << endl << e << endl;
-
-	cout << endl;
-}
-
-void testTensorMultiple() {
-	cout << "******** TEST CASE: Vector = Vector x Matrix ********" << endl;
-
-	Tensor<cpu, 2, int> &a = Matrix<cpu, int>::type();
-	Tensor<cpu, 1, float> &b = Vector<cpu, float>::type();
-	Tensor<cpu, 1, float> &c = b * a;
+	Vector<cpu, double>::type Delta_Effect, Gamma_Effect, Rho_Effect, Theta_Effect, Vega_Effect;
+	Delta_Effect = op::Dot(-op::Abs(net_delta), HPPriceChange);
+	Gamma_Effect = op::Dot(net_gamma, HPPriceChangeSQ) / 2;
+	Theta_Effect = net_theta * 3.0;
+	Vega_Effect  = op::Dot(-op::Abs(net_vega), vol_iv) * sqrt(3.0 * 5 / 7);
+	Rho_Effect   = op::Dot(-op::Abs(net_rho), vol_RfIn) * sqrt(3.0 * 5 / 7);
 	
-	size_t nrow = 2, ncol = 3;
-	int data_a[] = {1,2,3,4,5,6};
-	float data_b[] = {7.5,8.5};
-	a.Input(data_a, Shape2(nrow, ncol));
-	b.Input(data_b, Shape1(nrow));
-	c.Update();
-
-	cout << a << endl;
-	cout << b << endl;
-	cout << c << endl << endl;
-}
-
-void testTensorMultiple2() {
-	cout << "******** TEST CASE: Matrix = Matrix x Matrix ********" << endl;
-	size_t i = 3, j = 2;
-	Tensor<cpu, 2, float> &a = Matrix<cpu, float>::type();
-	Tensor<cpu, 2, double> &b = Matrix<cpu, double>::type();
-	Tensor<cpu, 2, double> &c = a * b, &d = b * a;
-	float data_a[] = {1,2,3,4,5,6};
-	double data_b[] = {6,5,4,3,2,1};
-	a.Input(data_a, Shape2(i,j));
-	b.Input(data_b, Shape2(j,i));
-	c.Update();
-	d.Update();
+	Vector<cpu, double>::type DTRRR, VTRRR, RTRRR;
+	DTRRR = op::Dot(Delta_Effect + Gamma_Effect, 1.0 / Theta_Effect);
+	VTRRR = op::Dot(Vega_Effect, 1.0 / Theta_Effect);
+	RTRRR = op::Dot(Rho_Effect, 1.0 / Theta_Effect);
 	
-	cout << c << endl << d << endl << endl;
-}
+	double a = 0.5, b = 0.5, c = 0;
+	Scalar<cpu, double>::type opt;
+	opt = (a * DTRRR + b * VTRRR + c * RTRRR) * price_prob;
 
-void testTensorMultiple3() {
-	cout << "******** TEST CASE: Scalar = Scalar x Scalar ********" << endl;
-	Tensor<cpu, 0, int> &a = Scalar<cpu, int>::type();
-	Tensor<cpu, 0, double> &b = Scalar<cpu, double>::type();
-	Tensor<cpu, 0, double> &c = a*b;
-	int data_a = 10;
-	double data_b = 5.5;
-	a.Input(&data_a);
-	b.Input(&data_b);
-	c.Update();
-	cout << c << endl << endl;
+	Matrix<cpu, double>::LoadCSV(delta, "data/delta.csv");
+	Matrix<cpu, double>::LoadCSV(gamma, "data/gamma.csv");
+	Matrix<cpu, double>::LoadCSV(rho, "data/rho.csv");
+	Matrix<cpu, double>::LoadCSV(theta, "data/theta.csv");
+	Matrix<cpu, double>::LoadCSV(vega, "data/vega.csv");
 	
-	cout << "******** TEST CASE: Scalar = Scalar x Matrix ********" << endl;
-	Tensor<cpu, 0, float> &d = Scalar<cpu, float>::type();
-	Tensor<cpu, 2, int> &e = Matrix<cpu, int>::type();
-	Tensor<cpu, 2, float> &f = d*e, &g = e*d;
+	Vector<cpu, double>::LoadCSV(iv, "data/iv.csv");
+	Vector<cpu, int>::LoadCSV(sp, "data/price.csv");
+	Vector<cpu, double>::LoadCSV(vol_iv, "data/vol_iv.csv");
+	Vector<cpu, double>::LoadCSV(vol_RfIn, "data/vol_RfIn.csv");
+	Vector<cpu, double>::LoadCSV(price_prob, "data/price_prob.csv");
 
-	float data_d = 5;
-	int data_e[] = {1,2,3,4};
-	d.Input(&data_d);
-	e.Input(data_e, Shape2(2,2));
-	f.Update();
-	g.Update();
-
-	cout << f << endl << g << endl;
-	cout << endl;
-}
-
-void testTensorArithmetic() {
-	cout << "************ TEST CASE: Tensor Airthmetic ***********" << endl;
-
-	Tensor<cpu, 0, float> &a = Scalar<cpu, float>::type(), &h = Scalar<cpu, float>::type(), &w = Scalar<cpu, float>::type();
-	Tensor<cpu, 1, double> &b = Vector<cpu, double>::type(), &c = Vector<cpu, double>::type();
-	Tensor<cpu, 2, int> &e = Matrix<cpu, int>::type();
-	Tensor<cpu, 1, double> &r = h + a * b / h + c * e - w;
-	Matrix<cpu, double>::type &f = 1.0 / e;
-
-	float data_a = 10, data_h = 5, data_w = 20;
-	double data_b[] = {1,2}, data_c[] = {3,4};
-	int data_e[] = {5,6,7,8};
-	a.Input(&data_a);
-	h.Input(&data_h);
-	w.Input(&data_w);
-	b.Input(data_b, Shape1(2));
-	c.Input(data_c, Shape1(2));
-	e.Input(data_e, Shape2(2,2));
-	r.Update();
-	f.Update();
-
-	cout << r << endl;
-	cout << f << endl;
-
-	Tensor<cpu, 0, float> &x = a + h;
-	x.Update();
-	cout << x << endl << endl;
-}
-
-void testTensorOutput() {
-	
-	cout << "********** TEST CASE: Tensor Output Format **********" << endl;
-	Tensor<cpu, 0, int> &a = Scalar<cpu, int>::type();
-	int data_a = 10;
-	a.Input(&data_a);
-	cout << a << endl;
-
-	Tensor<cpu, 1, int> &b = Vector<cpu, int>::type();
-	int data_b[] = {1,2,3,4,5};
-	b.Input(data_b, Shape1(5));
-	cout << b << endl;
-
-	Tensor<cpu, 2, int> &c = Matrix<cpu, int>::type(), &e = op::Transpose(c);
-	int data_c[] = {1,2,3,4};
-	c.Input(data_c, Shape2(2,2));
-	e.Update();
-	cout << c << endl << e << endl;
-
-	Shape<3> s;
-	s[0] = 2; s[1] = 2; s[2] = 2;
-	Tensor<cpu, 3, int> &d = Tensor<cpu, 3, int>();
-	int data_d[] = {1,2,3,4,5,6,7,8};
-	d.Input(data_d, s);
-	cout << d << endl << endl;
-}
-
-void testOps() {
-	cout << "************ TEST CASE: Tensor Operations ***********" << endl;
-	Tensor<cpu, 2, float> &c = Matrix<cpu, float>::type(), &e = op::Abs(c);
-	Tensor<cpu, 2, double> &d = op::Sqrt(op::Abs(op::Round(c)));
-	float data_c[] = {1.5f,-2.2f,3.7f,-4.5f};
-	c.Input(data_c, Shape2(2,2));
-	d.Update();
-	cout << d << endl << endl;	
-}
-
-void testLogic() {
-	cout << "************** TEST CASE: Tensor Logics *************" << endl;
-
-	Matrix<cpu, float>::type &a = Matrix<cpu, float>::type();
-	Matrix<cpu, int>::type &b = (a == 0.6f);
-	Scalar<cpu, float>::type &s = op::Sum(a);
-	float data_a[] = {0.2f, 0.4f, 0.6f, 0.8f};
-	a.Input(data_a, Shape2(2,2));
-	b.Update();
-	s.Update();
-	cout << b << endl << s << endl << endl;
-}
-
-void testRandom() {
-	cout << "************ TEST CASE: Random Generator ************" << endl;
-
-	Matrix<cpu, double>::type &x = Matrix<cpu, double>::type();
-	Shape<2> s = Shape2(5, 10);
-
-	Random<cpu> r;
-	r.GaussianInit(x, s);
-	cout << x << endl << endl;
-}
-
-int main() {
-	testShape();
-	testTensorAdd();
-	testTensorMultiple();
-	testTensorMultiple2();
-	testTensorMultiple3();
-	testTensorArithmetic();
-	testTensorOutput();
-	testOps();
-	testLogic();
-	testRandom();
-
-	int a = 0, b = 1, &c = a;
-	c = b;
-	cout << a << endl;
+	double quality[] = {
+		1,1,1,1,1,1,1,1,1,1,
+		1,1,1,1,1,1,1,1,1,1,
+		1,1,1,1,1,1,1,1,1,1,
+		1,1,1,1,1};
+	qty.Load(quality, Shape1(35));
+	opt.Update();
+	std::cout << opt << std::endl << std::endl;
 
 	return 0;
 }
